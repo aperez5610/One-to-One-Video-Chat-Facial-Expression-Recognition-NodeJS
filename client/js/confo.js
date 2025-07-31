@@ -127,8 +127,8 @@ var config = {
 };
 var name = "";
 
-let createTokenParams = 688bc6babfc521b8e14d0f80;
-let token = 688bc6babfc521b8e14d0f80;
+let createTokenParams = "688bc6babfc521b8e14d0f80";
+let token = "688bc6babfc521b8e14d0f80";
 let faceAIConfig = {
   faceDetector:{minFaceSizeAt640: 50, maxInputFrameSize: 720, multiFace: true},
   facePose:{},

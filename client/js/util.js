@@ -1,4 +1,4 @@
-/// ////////////////////////////////////////////////////
+///////////////////////////////////////////////////////
 //
 // File: util.js
 // This function tries to get a Token for a Room
@@ -6,28 +6,57 @@
 // Last Updated: 29-11-2018
 // Reformat, Indentation, Inline Comments
 //
-/// //////////////////////////////////////////////////
+/////////////////////////////////////////////////////
 
-const createToken = function (details, callback) {
-  const xhttp = new XMLHttpRequest();
+var createToken = function (details, callback) {
+  var xhttp = new XMLHttpRequest();
   xhttp.onreadystatechange = function () {
     if (this.readyState == 4 && this.status == 200) {
-      const response = JSON.parse(this.responseText);
+      var response = JSON.parse(this.responseText);
       if (response.error) {
         $.toast({
-          heading: 'Error',
+          heading: "Error",
           text: response.error,
-          showHideTransition: 'fade',
-          icon: 'error',
-          position: 'top-right',
-          showHideTransition: 'slide',
+          showHideTransition: "fade",
+          icon: "error",
+          position: "top-right",
+          showHideTransition: "slide",
         });
       } else {
         callback(response.token);
       }
     }
   };
-  xhttp.open('POST', '/api/create-token/', true);
-  xhttp.setRequestHeader('Content-Type', 'application/json');
+  xhttp.open("POST", "/createToken/", true);
+  xhttp.setRequestHeader("Content-Type", "application/json");
   xhttp.send(JSON.stringify(details));
+};
+
+var createRoom = function (app_id , callback) {
+
+    var xhttp = new XMLHttpRequest();
+    xhttp.onreadystatechange = function () {
+        if (this.readyState == 4 && this.status == 200) {
+            var response = JSON.parse(this.responseText);
+            if (response.error) {
+                $.toast({
+                    heading: "Error",
+                    text: response.error,
+                    showHideTransition: "fade",
+                    icon: "error",
+                    position: "top-right",
+                });
+            } else {
+                callback(response.room.room_id);
+            }
+        }
+    };
+    xhttp.open("POST", "/createRoom/", true);
+    xhttp.setRequestHeader("Content-Type", "application/json");
+    xhttp.setRequestHeader(
+        "Authorization",
+        "Basic " + btoa("demo" + ":" + "enablex")
+    );
+    xhttp.send(JSON.stringify({appId : app_id}));
+
 };

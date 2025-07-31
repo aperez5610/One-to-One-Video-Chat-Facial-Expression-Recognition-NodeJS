@@ -1,4 +1,4 @@
-/// ////////////////////////////////////////////////////
+///////////////////////////////////////////////////////
 //
 // File: confo.js
 // This is the main application file for client end point. It tries to use Enablex Web Toolkit to
@@ -7,18 +7,19 @@
 // Last Updated: 29-11-2018
 // Reformat, Indentation, Inline Comments
 //
-/// //////////////////////////////////////////////////
-// Ensure EnxFaceAI and EnxFaceCompare are available in the global scope or imported before use
-// Example (uncomment and adjust the import path as needed):
-// import { EnxFaceAI, EnxFaceCompare } from './enx-face-ai.js';
-
-let faceAI = null;
+/////////////////////////////////////////////////////
+let camList = null;
+let micList = null;
+let faceTrackStream = null;
+const shareURL = `https://${window.location.hostname}`
+let joinRoomRes = null;
+let faceX = null;
 let faceComp = null;
 let isCheckSimilarity = false;
 let selectedImage = [];
 let selectedImgIndex = 0;
-let faceAIRunning = false;
-let ATList = [];
+let facexRunning = false;
+var ATList = [];
 const faceConfig = {
   maxInputFrameSize: 160,
   smoothness: 0.99,
@@ -28,66 +29,64 @@ const faceConfig = {
 };
 
 let isAppendFaceDetail = false;
-const faceTrackingData = {
+let faceTrackingData = {
   attention: null,
   age: null,
   gender: null,
   pose: null,
   face: null,
-  liveness: '',
-  similarity: '',
+  liveness: "",
+  similarity: "",
+  emotions: null,
+  features: null,
+  arousalValence: null,
 };
-let faceAIConfig = {
-  faceDetector: {minFaceSizeAt640: 50, maxInputFrameSize: 720, multiFace: true},
-  facePose: {},
-  faceAge: {},
-  faceEmotion: {},
-  faceGender: {smoothness: 0.95, threshold: 0.70},
-  faceFeatures: {smoothness: 0.90},
-  faceArousalValence: {},
-  faceAttention: {},
-}
-const imgURL = null;
+var remoteTrackingData = {};
+let previousSendData = null;
+let imgURL = null;
 let isCheckLiveness = false;
-const facesURL = [];
+let facesURL = [];
 
-let localStream = null;
-let username = null;
-let room;
-const SUPPORT_URL = 'https://nuve.us';
+var localStream = null;
+var username = null;
+var room;
+var countStream = 0;
+var localStreamId = null;
+var urlData = null;
+var SUPPORT_URL = "https://enablex.io";
 // Player Options
-const options = {
-  id: 'vcx_1001',
-  attachMode: '',
+var options = {
+  id: "vcx_1001",
+  attachMode: "",
   player: {
-    autoplay: '',
-    name: '',
-    nameDisplayMode: '',
-    frameFitMode: 'bestFit',
-    skin: 'classic',
-    class: '',
-    height: 'inherit',
-    width: 'inherit',
-    minHeight: '120px',
-    minWidth: '160px',
-    aspectRatio: '',
+    autoplay: "",
+    name: "",
+    nameDisplayMode: "",
+    frameFitMode: "bestFit",
+    skin: "classic",
+    class: "",
+    height: "inherit",
+    width: "inherit",
+    minHeight: "120px",
+    minWidth: "160px",
+    aspectRatio: "",
     volume: 0,
-    media: '',
+    media: "",
     loader: {
       show: false,
-      url: '/img/loader.gif',
-      style: 'default',
-      class: '',
+      url: "/img/loader.gif",
+      style: "default",
+      class: "",
     },
-    backgroundImg: '/img/player-bg.gif',
+    backgroundImg: "/img/player-bg.gif",
   },
   toolbar: {
-    displayMode: 'auto',
+    displayMode: "auto",
     autoDisplayTimeout: 0,
-    position: 'top',
-    skin: 'default',
-    iconset: 'default',
-    class: '',
+    position: "top",
+    skin: "default",
+    iconset: "default",
+    class: "",
     buttons: {
       play: false,
       share: false,
@@ -101,535 +100,843 @@ const options = {
     },
     branding: {
       display: false,
-      clickthru: 'https://nuve.us',
-      target: 'new',
-      logo: '/img/LogoNukio.png',
-      title: 'Nukio',
-      position: 'right',
+      clickthru: "https://www.enablex.io",
+      target: "new",
+      logo: "/img/enablex.png",
+      title: "EnableX",
+      position: "right",
     },
   },
 };
-/* Face config for face detection */
-function config() {
-  return `{  
-"runtime": {  
-  "accept_threshold": 0.89,  
-  "associate_threshold": 0.5,  
-  "split_threshold": 0.015,  
-  
-  }   
-}`;
-}
-let binarystring; // Global intentionally
-const customizedConfig = {
-  customConfig: config(),
+
+
+var allStreamsSubscribed = false;
+
+var binarystring; // Global intentionally
+var config = {
+  audio: { deviceId: null },
+  video: { deviceId: null },
+  data: true,
+  audioMuted: false, // Audio muted on entry to room
+  videoMuted: false,
+  videoSize: [],
+  options: options,
+  attributes: {
+    name: name,
+  },
 };
+var name = "";
+
+let createTokenParams = null;
+let token = null;
+let faceAIConfig = {
+  faceDetector:{minFaceSizeAt640: 50, maxInputFrameSize: 720, multiFace: true},
+  facePose:{},
+  faceAge:{},
+  faceEmotion:{},
+  faceGender:{smoothness: 0.95, threshold: 0.70},
+  faceFeatures:{smoothness: 0.90},
+  faceArousalValence:{},
+  faceAttention:{},
+}
+
+var emoAngryId = document.getElementById("emo_angry");
+var emoDisgust = document.getElementById("emo_disgust");
+var emoFear = document.getElementById("emo_fear");
+var emoHappy = document.getElementById("emo_happy");
+var emoSad = document.getElementById("emo_sad");
+var emoSurprise = document.getElementById("emo_surprise");
+var emoNutral = document.getElementById("emo_neutral");
+var attentionId = document.getElementById("attention");
+var appendNode = document.getElementById("face_features");
+var affectsArousal = document.getElementById("affects_arousal");
+var affectsValence = document.getElementById("affects_valence");
+var likelyAge = document.getElementById("likely_age");
+var genderDiv = document.getElementById("gender_div");
+
 window.onload = function () {
-  $('#faces_snapshot').hide();
-  $('#compare_div').hide();
-  faceAI = new EnxFaceAI();
+  $("#faces_snapshot").hide();
+  $("#compare_div").hide();
+  faceX = new  EnxFaceAI();
   faceComp = new EnxFaceCompare();
-
-  // URL Parsing to fetch Room Information to join
-  const parseURLParams = function (url) {
-    const queryStart = url.indexOf('?') + 1;
-    const queryEnd = url.indexOf('#') + 1 || url.length + 1;
-    const query = url.slice(queryStart, queryEnd - 1);
-    const pairs = query.replace(/\+/g, ' ').split('&');
-    const parms = {};
-    let i;
-    let n;
-    let v;
-    let nv;
-
-    if (query === url || query === '') return;
-
-    for (i = 0; i < pairs.length; i++) {
-      nv = pairs[i].split('=', 2);
-      n = decodeURIComponent(nv[0]);
-      v = decodeURIComponent(nv[1]);
-
-      if (!parms.hasOwnProperty(n)) parms[n] = [];
-      parms[n].push(nv.length === 2 ? v : null);
-    }
-    return parms;
-  };
-  const urlData = parseURLParams(window.location.href);
-  const name = urlData.user_ref[0];
-  // Local Stream Definition
-  const config = {
-    audio: true,
-    video: { deviceId: localStorage.getItem('cam') },
-    data: true,
-    videoSize: [320, 180, 640, 480],
-    options,
-    attributes: {
-      name,
-    },
-  };
-
-  let countStream = 0;
-
-  const localStreamId = null;
-
-  const setLiveStream = function (stream, remoteData) {
-    // Listening to Text Data
-    stream.addEventListener('stream-data', (e) => {
-      const text = e.msg.textMessage;
-      const html = $('.multi_text_container_div').html();
-      $('#multi_text_container_div').html(`${html + text}<br>`);
-    });
-    const name = stream.getAttributes().name !== undefined
-      ? stream.getAttributes().name
-      : '';
-    if (!stream.local) {
-      const newStreamDiv = document.createElement('div');
-      newStreamDiv.setAttribute('id', remoteData.clientId);
-      newStreamDiv.setAttribute('class', 'live_stream_div col-md-3 col-sm-3');
-      var nameDiv = document.createElement('div');
-      nameDiv.setAttribute('id', `title_${remoteData.clientId}`);
-      nameDiv.setAttribute('class', 'name-div');
-      nameDiv.innerHTML = remoteData.name;
-      newStreamDiv.appendChild(nameDiv);
-      const multi_video_div = document.getElementById(
-        'multi_video_container_div',
-      );
-      multi_video_div.appendChild(newStreamDiv);
-      options.player.height = 'inherit';
-      options.player.width = 'inherit';
-      options.player.class = 'test_class';
-
-      stream.show(remoteData.clientId, options);
-      countStream++;
-    } else {
-      options.player.height = 'inherit';
-      options.player.width = 'inherit';
-      options.player.loader.class = '';
-      options.player.loader.show = false;
-      const controlsDiv = document.getElementById('controls-div');
-      controlsDiv.style.display = 'block';
-      var nameDiv = document.createElement('div');
-      nameDiv.setAttribute('class', 'name-div');
-      nameDiv.innerHTML = name;
-      document.getElementById('local_video_div').appendChild(controlsDiv);
-      document.getElementById('local_video_div').appendChild(nameDiv);
-      stream.show('local_video_div', options);
-    }
-  };
-
-  // Function: To create user-json for Token Request
-
-  const createDataJson = function (url) {
-    const urlData = parseURLParams(url);
-    username = urlData.user_ref[0];
-    const retData = {
-      name: urlData.user_ref[0],
-      role: urlData.usertype[0],
-      roomId: urlData.roomId[0],
-      user_ref: urlData.user_ref[0],
-    };
-    return retData;
-  };
-
-  // Function: Create Token
-
-  createToken(createDataJson(window.location.href), (response) => {
-    const token = response;
-
-    // JOin Room
-    localStream = EnxRtc.joinRoom(token, config, (response, error) => {
-      if (error && error != null) {
-      }
-      if (response && response != null) {
-        room = response.room;
-        const ownId = response.publishId;
-        setLiveStream(localStream);
-                  for (let i = 0; i < response.streams.length; i++) {
-          room.subscribe(response.streams[i]);
-        }
-        // for face tracking
-        faceAI.init(response, null,faceAIConfig, (res) => {
-          console.log(res, 'init result');
-          if (res.result === 0) {
-            startFaceTrack();
-          }
-        });
-
-        room.addEventListener('connected', (event) => {
-          console.log(event, 'event');
-        });
-        // Active Talker list is updated
-        room.addEventListener('active-talkers-updated', (event) => {
-          ATList = event.message.activeList;
-          document
-            .querySelectorAll('.classic_vcx_stream')
-            .forEach((item) => {
-              item.classList.remove('border-b-active');
+  urlData = parseURLParams(window.location.href);
+  name = urlData.user_ref[0];
+  createTokenParams = createDataJson(window.location.href);
+  console.log("Window Params",createTokenParams);
+  EnxRtc.getDevices(function (arg) {
+    if (arg.result === 0) {
+      camList = arg.devices.cam;
+      micList = arg.devices.mic;
+      config.video.deviceId = camList[0].deviceId;
+      config.audio.deviceId = micList[0].deviceId;
+      listOutMic(micList);
+      listOutCam(camList);
+      if (createTokenParams.roomId === null) {
+        if(createTokenParams.appId == null)
+        {
+            createRoom(null,function (result) {
+                createTokenParams.roomId = result;
+                createJoinToken(createTokenParams);
             });
-          const video_player_len = document.querySelector(
-            '#multi_video_container_div',
-          ).childNodes;
-          if (
-            event.message
-            && event.message !== null
-            && event.message.activeList
-            && event.message.activeList !== null
-          ) {
-            if (ATList.length == video_player_len.length) {
-              return;
-            }
-            document.querySelector('#multi_video_container_div').innerHTML = '';
+        }
+        else{
+            createRoom(createTokenParams.appId,function (result) {
+                createTokenParams.roomId = result;
+                createJoinToken(createTokenParams);
+            });
+        }
+      } else {
+        createJoinToken(createTokenParams);
+      }
+    } else if (arg.result === 1153) {
+      $("#unsupported_browser_message").show();
+    } else {
+      $("#media-device-permission-error").show();
+    }
+  });
+
+};
+function parseURLParams(url) {
+  var queryStart = url.indexOf("?") + 1,
+    queryEnd = url.indexOf("#") + 1 || url.length + 1,
+    query = url.slice(queryStart, queryEnd - 1),
+    pairs = query.replace(/\+/g, " ").split("&"),
+    parms = {},
+    i,
+    n,
+    v,
+    nv;
+
+  if (query === url || query === "") return;
+
+  for (i = 0; i < pairs.length; i++) {
+    nv = pairs[i].split("=", 2);
+    n = decodeURIComponent(nv[0]);
+    v = decodeURIComponent(nv[1]);
+
+    if (!parms.hasOwnProperty(n)) parms[n] = [];
+    parms[n].push(nv.length === 2 ? v : null);
+  }
+  return parms;
+};
+
+
+// Function: To create user-json for Token Request
+function createDataJson (url) {
+  urlData = parseURLParams(url);
+  username = urlData.user_ref[0];
+  var retData = {
+    name: urlData.user_ref[0],
+    role: urlData.usertype[0],
+    roomId: urlData.roomId ? urlData.roomId[0] : null,
+    user_ref: urlData.user_ref[0],
+      appId: urlData.appId ? urlData.appId[0] : null,
+  };
+  return retData;
+};
+
+function startTrack (){
+  joinRoom(token, config);
+}
+
+function createJoinToken(params) {
+  createToken(params, function (response) {
+    token = response;
+    $("#localStreamModal").modal("show");
+
+  });
+}
+
+var setLiveStream = function (stream, remoteData) {
+  // Listening to Text Data
+  stream.addEventListener("stream-data", function (e) {
+    var text = e.msg.textMessage;
+    var html = $(".multi_text_container_div").html();
+    $("#multi_text_container_div").html(html + text + "<br>");
+  });
+  var name =
+    stream.getAttributes().name !== undefined
+      ? stream.getAttributes().name
+      : "";
+  if (!stream.local) {
+    var newStreamDiv = document.createElement("div");
+    newStreamDiv.setAttribute("id", remoteData.clientId);
+    newStreamDiv.setAttribute("class", "live_stream_div");
+    //document.getElementById("remote_user_name").innerHTML = remoteData.name;
+    var multi_video_div = document.getElementById("multi_video_container_div");
+    // multi_video_div.style.width = '100%';
+    // multi_video_div.style.height = '350px';
+    // multi_video_div.style.objectFit = 'container';
+    multi_video_div.appendChild(newStreamDiv);
+    options.player.height = "inherit";
+    options.player.width = "inherit";
+    options.player.class = "test_class";
+    $("#local_video_show").hide();
+    stream.show(remoteData.clientId, options);
+    countStream++;
+    // if (faceTrackStream === "remoteStream") {
+    //   faceTrackInit(joinRoomRes, stream);
+    // }
+  } else {
+    options.player.height = "inherit";
+    options.player.width = "inherit";
+    options.player.loader.class = "";
+    options.player.loader.show = false;
+    document.getElementById("local_user_name").innerHTML = username;
+    stream.show("local_video_div", options);
+    stream.show("local_video_show", options);
+    startTimer();
+    //if (faceTrackStream === "localStream") {
+      faceTrackInit(joinRoomRes, stream);
+    //}
+  }
+};
+
+// JOin Room
+function joinRoom() {
+  if (createTokenParams.role === "moderator" && urlData.action[0] === "2") {
+    if(createTokenParams.appId !== null)
+    {
+        document.getElementById("link").value = `${shareURL}/confo.html?roomId=${createTokenParams.roomId}&usertype=participant&user_ref=participant&appId=${createTokenParams.appId}`;
+
+    }else{
+        document.getElementById("link").value = `${shareURL}/confo.html?roomId=${createTokenParams.roomId}&usertype=participant&user_ref=participant`;
+
+    }
+        $("#remoteStreamModal").modal("show");
+    faceTrackStream = "remoteStream";
+  } else if(createTokenParams.role === "participant") {
+    faceTrackStream = "remoteStream";
+  }else{
+    faceTrackStream = "localStream";
+  }
+  localStream = EnxRtc.joinRoom(token, config, function (response, error) {
+    if (error && error != null) {
+    }
+    if (response && response != null) {
+      room = response.room;
+      var ownId = response.publishId;
+      joinRoomRes = response;
+
+      var roomStreamsLength = response.streams.length;
+      var streamsCount = 0;
+
+      setLiveStream(localStream);
+      for (var i = 0; i < response.streams.length; i++) {
+        streamsCount += 1;
+        if (streamsCount == roomStreamsLength) {
+          togglElementDisplay(_QS('#loading-spinner'), 'none');
+        }
+        room.subscribe(response.streams[i]);
+      }
+      // //for face tracking
+      // faceX.init(response, localStream, (res) => {
+      //   console.log(res, "init result");
+      //   if (res.result === 0) {
+      //     startFaceTrack();
+      //   }
+      // });
+
+      room.addEventListener("connected", function (event) {
+        console.log(event, "event");
+      });
+      // Active Talker list is updated
+      room.addEventListener("active-talkers-updated", function (event) {
+        ATList = event.message.activeList;
+        document
+          .querySelectorAll(".classic_vcx_stream")
+          .forEach(function (item) {
+            item.classList.remove("border-b-active");
+          });
+        var video_player_len = document.querySelector(
+          "#multi_video_container_div"
+        ).childNodes;
+        if (
+          event.message &&
+          event.message !== null &&
+          event.message.activeList &&
+          event.message.activeList !== null
+        ) {
+          if (ATList.length == video_player_len.length) {
+            return;
+          } else {
+            document.querySelector("#multi_video_container_div").innerHTML = "";
             for (stream in room.remoteStreams.getAll()) {
-              const st = room.remoteStreams.getAll()[stream];
+              var st = room.remoteStreams.getAll()[stream];
               for (j = 0; j < ATList.length; j++) {
                 if (ATList[j].streamId == st.getID()) {
-                  const remoteData = ATList[j];
+                  var remoteData = ATList[j];
                   setLiveStream(st, remoteData);
                 }
               }
             }
           }
+        }
 
-          if (ATList !== null && ATList.length) {
-            const active_talker_stream = ATList[0].streamId;
+        if (ATList !== null && ATList.length) {
+          var active_talker_stream = ATList[0].streamId;
 
-            document
-              .getElementById(`stream${active_talker_stream}`)
-              .classList.add('border-b-active');
-          }
-          console.log(`Active Talker List :- ${JSON.stringify(event)}`);
-        });
+          document
+            .getElementById("stream" + active_talker_stream)
+            .classList.add("border-b-active");
+        }
+        console.log("Active Talker List :- " + JSON.stringify(event));
+        // if(!facexRunning){
+        //   faceX.init(response, room.remoteStreams.get(ATList[0].streamId), (res) => {
+        //     console.log(res, "init result");
+        //     if (res.result === 0) {
+        //       startFaceTrack();
+        //       facexRunning = true;
+        //     }
+        //   });
+        // }
+      });
 
-        // Stream has been subscribed successfully
-        room.addEventListener('stream-subscribed', (streamEvent) => {
-          const stream = streamEvent.data && streamEvent.data.stream
+      // Stream has been subscribed successfully
+      room.addEventListener("stream-subscribed", function (streamEvent) {
+        var stream =
+          streamEvent.data && streamEvent.data.stream
             ? streamEvent.data.stream
             : streamEvent.stream;
-          for (k = 0; k < ATList.length; k++) {
-            if (ATList[k].streamId == stream.getID()) {
-              const remoteData = ATList[k];
-              setLiveStream(stream, remoteData);
-            }
+        for (k = 0; k < ATList.length; k++) {
+          if (ATList[k].streamId == stream.getID()) {
+            var remoteData = ATList[k];
+            setLiveStream(stream, remoteData);
           }
-        });
+        }
+      });
 
-        room.addEventListener('user-disconnected', (event) => {
-          console.log(e);
-          faceAIRunning = false;
-        });
+      room.addEventListener("user-connected", function (event) {
+        console.log(event);
+        $("#local_video_show").hide();
+      });
 
-        // Listening to Incoming Data
-        room.addEventListener('active-talker-data-in', (data) => {
-          console.log(`active-talker-data-in${data}`);
-          const obj = {
-            msg: data.message.message,
-            timestamp: data.message.timestamp,
-            username: data.message.from,
-          };
-          // Handle UI to display message
-        });
+      room.addEventListener("user-disconnected", function (event) {
+        console.log(event);
+        $("#local_video_show").show();
+        //document.getElementById("remote_user_name").innerHTML = "";
+        facexRunning = false;
+      });
 
-        // Stream went out of Room
-        room.addEventListener('stream-removed', (event) => {
-          console.log(event);
-        });
+      // Listening to Incoming Data
+      room.addEventListener("active-talker-data-in", function (data) {
+        console.log("active-talker-data-in" + data);
+        var obj = {
+          msg: data.message.message,
+          timestamp: data.message.timestamp,
+          username: data.message.from,
+        };
+        // Handle UI to display message
+      });
 
-        // Listening to face data
-        room.addEventListener('user-data-received', (event) => {
-          const data = event.message;
-          const itemDiv = document.getElementById(`title_${data.senderId}`); // .innerHTML = evt.detail.output.attention.toFixed(2);
-          if (itemDiv) {
-            itemDiv.innerHTML = `${data.sender} (attention=${data.message.value.attention})`;
-          }
-          console.log(data, "faceTrackingData");
-        });
-      }
-    });
+      // Stream went out of Room
+      room.addEventListener("stream-removed", function (event) {
+        console.log(event);
+      });
+
+      //Listening to face data
+      room.addEventListener("user-data-received", function (event) {
+        const data = JSON.parse(event.message.message);
+        remoteTrackingData = null;
+        remoteTrackingData = data;
+        //optimizeRemoteData(faceTrackingData);
+        //appendRemoteFaceDetail(data);
+        //console.log(data, "faceTrackingData.......");
+      });
+    }
   });
-};
+}
 
 function audioMute() {
-  const elem = document.getElementsByClassName('icon-confo-mute')[0];
-  const onImgPath = '../img/mike.png';
-  const onImgName = 'mike.png';
-  const offImgPath = '../img/mute-mike.png';
-  const offImgName = 'mute-mike.png';
-  const currentImgPath = elem.src.split('/')[elem.src.split('/').length - 1];
+  var elem = document.getElementsByClassName("icon-confo-mute")[0];
+  var onImgPath = "../img/mike.png",
+    onImgName = "mike.png";
+  var offImgPath = "../img/mute-mike.png",
+    offImgName = "mute-mike.png";
+  var currentImgPath = elem.src.split("/")[elem.src.split("/").length - 1];
   if (currentImgPath === offImgName) {
-    localStream.unmuteAudio((arg) => {
+    localStream.unmuteAudio(function (arg) {
       elem.src = onImgPath;
-      elem.title = 'mute audio';
+      elem.title = "mute audio";
     });
   } else if (currentImgPath === onImgName) {
-    localStream.muteAudio((arg) => {
+    localStream.muteAudio(function (arg) {
       elem.src = offImgPath;
-      elem.title = 'unmute audio';
+      elem.title = "unmute audio";
     });
   }
 }
+
+function startTimer(){
+	 var timer = $("#timer");
+
+    function updateTimer() {
+        var myTime = timer.html();
+        var ss = myTime.split(":");
+        var dt = new Date();
+        dt.setHours(0);
+        dt.setMinutes(ss[0]);
+        dt.setSeconds(ss[1]);
+
+        var dt2 = new Date(dt.valueOf() + 1000);
+        var temp = dt2.toTimeString().split(" ");
+        var ts = temp[0].split(":");
+
+        timer.html(ts[1]+":"+ts[2]);
+        setTimeout(updateTimer, 1000);
+    }
+
+    setTimeout(updateTimer, 1000);
+}
+
 function videoMute() {
-  const elem = document.getElementsByClassName('icon-confo-video-mute')[0];
-  const onImgPath = '../img/video.png';
-  const onImgName = 'video.png';
-  const offImgPath = '../img/mute-video.png';
-  const offImgName = 'mute-video.png';
-  const currentImgPath = elem.src.split('/')[elem.src.split('/').length - 1];
+  var elem = document.getElementsByClassName("icon-confo-video-mute")[0];
+  var onImgPath = "../img/video.png",
+    onImgName = "video.png";
+  var offImgPath = "../img/mute-video.png",
+    offImgName = "mute-video.png";
+  var currentImgPath = elem.src.split("/")[elem.src.split("/").length - 1];
   if (currentImgPath === offImgName) {
-    localStream.unmuteVideo((res) => {
-      // const streamId = localStream.getID();
-      // const player = document.getElementById(`stream${streamId}`);
-      // player.srcObject = localStream.stream;
-      // player.play();
+    localStream.unmuteVideo(function (res) {
+      var streamId = localStream.getID();
+      var player = document.getElementById("stream" + streamId);
+      player.srcObject = localStream.stream;
+      player.play();
       elem.src = onImgPath;
-      elem.title = 'mute video';
+      elem.title = "mute video";
     });
   } else if (currentImgPath === onImgName) {
-    localStream.muteVideo((res) => {
+    localStream.muteVideo(function (res) {
       elem.src = offImgPath;
-      elem.title = 'unmute video';
+      elem.title = "unmute video";
     });
   }
 }
 
 function endCall() {
-  const r = confirm('Are you really want to Quit??');
+  var r = confirm("Are you really want to Quit??");
   if (r == true) {
     window.location.href = SUPPORT_URL;
   }
 }
 function checkLiveness() {
-  alert('Please move your face right slowely');
+  alert("Please move your face right slowely");
   isCheckLiveness = true;
-  faceTrackingData.liveness = '';
+  faceTrackingData.liveness = "";
 }
 
 function resetLiveness() {
   isCheckLiveness = false;
-  faceTrackingData.liveness = '';
-  $('#compare_div').hide();
-  faceTrackingData.similarity = '';
-  ('selected_image0');
-  document.getElementById('selected_image0').innerHTML = '';
-  document.getElementById('selected_image1').innerHTML = '';
+  faceTrackingData.liveness = "";
+  $("#compare_div").hide();
+  faceTrackingData.similarity = "";
+  ("selected_image0");
+  document.getElementById("selected_image0").innerHTML = "";
+  document.getElementById("selected_image1").innerHTML = "";
   selectedImage = [];
 }
-function appendFaceDetail() {
-  isAppendFaceDetail = true;
 
-  setInterval(() => {
-    document.getElementById('face_attention').innerHTML = `
-      <h4>Attention: ${faceTrackingData.attention}</h4>
-      <h4>Age: ${faceTrackingData.age}</h4>
-      <h4>Gender: ${faceTrackingData.gender}</h4>
-      <h4>Pose: ${faceTrackingData.pose}</h4>
-      <h4>Liveliness: ${faceTrackingData.liveness}</h4>
-      <h4>Similarity: ${faceTrackingData.similarity}</h4>
-      `;
-  }, 1000 / 3);
-  $('#faces_snapshot').show();
-  setInterval(() => {
-    if (facesURL.length) {
-      $('#face_image').empty();
-      for (let i = 0; i < facesURL.length; i++) {
-        const image = new Image();
-        image.id = `face_${i}`;
-        image.src = facesURL[i].url;
-        image.onclick = function () {
-          return selectImage(image);
-        };
-        image.style.backgroundRepeat = 'no-repeat';
-        image.style.marginLeft = '5px';
-        image.style.marginTop = '5px';
-        image.style.border = '2px solid black';
-        image.style.borderRadius = '10px';
-        image.style.cursor = 'pointer';
-        $('#face_image').append(image);
+function sendFaceData(faceData){
+  //previousSendData = {...faceData};
+  room.sendUserData(JSON.stringify(faceData), true, []);
+  faceTrackingData = {};
+}
+function appendRemoteFaceDetail(remoteData) {
+  isAppendFaceDetail = true;
+  setInterval(function () {
+    optimizeRemoteData(faceTrackingData);
+    if(!remoteTrackingData){
+      return;
+    }
+    if (remoteTrackingData.emotions) {
+      emoAngryId.style.height = remoteTrackingData.emotions.Angry + "px";
+      emoDisgust.style.height = remoteTrackingData.emotions.Disgust + "px";
+      emoFear.style.height = remoteTrackingData.emotions.Fear + "px";
+      emoHappy.style.height = remoteTrackingData.emotions.Happy + "px";
+      emoSad.style.height = remoteTrackingData.emotions.Sad + "px";
+      emoSurprise.style.height = remoteTrackingData.emotions.Surprise + "px";
+      emoNutral.style.height = remoteTrackingData.emotions.Neutral + "px";
+    }
+
+    if (remoteTrackingData.attention >=0) {
+      attentionId.style.height = remoteTrackingData.attention + "px";
+    }
+    if (remoteTrackingData.gender) {
+      genderDiv.innerHTML = `<li>${remoteTrackingData.gender}</li>`;
+    }
+
+    if (remoteTrackingData.features) {
+      let appendNode = document.getElementById("face_features");
+      appendNode.innerHTML = "";
+      for (let key in remoteTrackingData.features) {
+        if (remoteTrackingData.features.hasOwnProperty(key)) {
+          //let value = remoteTrackingData.features[key];
+          //if (value >= 0.4) {
+            let node = document.createElement("LI");
+            let textnode = document.createTextNode(key);
+            node.appendChild(textnode);
+            appendNode.appendChild(node);
+          //}
+        }
       }
     }
-  }, 2000);
-}
-function selectImage(img) {
-  selectedImage[selectedImgIndex] = img;
-  const container = document.createElement('span');
-  document.getElementById(`selected_image${selectedImgIndex}`).innerHTML = '';
-  document
-    .getElementById(`selected_image${selectedImgIndex}`)
-    .append(container);
-  container.append(selectedImage[selectedImgIndex]);
+    if (remoteTrackingData.age) {
+      likelyAge.noUiSlider.set(remoteTrackingData.age);
+    }
+    if (remoteTrackingData.arousalValence) {
+      affectsArousal.noUiSlider.set(remoteTrackingData.arousalValence.arousal);
+      affectsValence.noUiSlider.set(remoteTrackingData.arousalValence.valence);
+    }
+  }, 1000/3);
 }
 
-function imagedata_to_image(imagedata) {
-  const canvas = document.createElement('canvas');
-  const ctx = canvas.getContext('2d');
-  canvas.width = imagedata.width;
-  canvas.height = imagedata.height;
-  ctx.putImageData(imagedata, 0, 0);
-  const image = new Image();
-  image.src = canvas.toDataURL();
-  return image;
-}
 
 function startFaceTrack() {
-  faceAI.startFaceDetector( (res) => {
+  faceX.startFaceDetector((res) => {
     if (res.result === 0) {
-      window.addEventListener('face-detector', (evt) => {
-        console.log(evt.detail, "face detector event...........");
-        const { faces } = evt.detail;
-        faceTrackingData.face = faces.length;
-        if (facesURL.length === 5) {
-          facesURL.splice(0, evt.detail.faces.length);
+      if (faceTrackStream !== "localStream") {
+        appendRemoteFaceDetail();
+      }
+      window.addEventListener(`face-detector`, (evt) => {
+        const faces = evt.detail.totalFaces;
+        //console.log('Face detector result', faces);
+        //faceTrackingData.face = faces.length;
+      });
+    }
+  });
+
+  // faceX.startFacePose((res) => {
+  //   if (res.result === 0) {
+  //     window.addEventListener(`face-pose`, (evt) => {
+  //       //console.log(evt.detail, "facex pose event...........");
+  //       const pitch = evt.detail.output.pose.pitch.toFixed(2);
+  //       const yaw = evt.detail.output.pose.yaw.toFixed(2);
+  //       //const roll = evt.detail.output.pose.yaw.toFixed(2);
+  //       if (yaw > 0.2 || yaw < -0.2 || pitch > 0.2 || pitch < -0.2)
+  //         faceTrackingData.pose = "Please look into the camera";
+  //       else faceTrackingData.pose = "Good";
+  //     });
+  //   }
+  // });
+
+  faceX.startFaceAge((res) => {
+    if (res.result === 0) {
+      window.addEventListener(`face-age`, (evt) => {
+        //console.log(evt.detail, "facex age event...........");
+        //const age = Math.ceil(evt.detail.output.numericAge / 5) * 5;
+        faceTrackingData.age = evt.detail.output.numericAge; // age - 5 + "-" + age;
+        if (faceTrackStream === "localStream") {
+          likelyAge.noUiSlider.set(faceTrackingData.age);
+        }else{
+          //sendFaceData(faceTrackingData);
         }
-        facesURL = [];
-        if (evt.detail.faces.length) {
-          for (let i = 0; i < evt.detail.faces.length; i++) {
-            const binarystring = imagedata_to_image(evt.detail.faces[i]);
-            facesURL.push({
-              url: binarystring.src,
-              width: evt.detail.faces[i].width,
-              height: evt.detail.faces[i].height,
-            });
+
+      });
+    }
+  });
+  faceX.startFaceEmotion((res) => {
+    if (res.result === 0) {
+      window.addEventListener(`face-emotion`, (evt) => {
+        const emotions = evt.detail.output.emotion;
+        const tempEmotion = {};
+        for (const emotion in emotions) {
+          tempEmotion[emotion] = parseInt(emotions[emotion].toFixed(2)*100);
+        }
+        faceTrackingData.emotions = tempEmotion;
+        if (faceTrackStream === "localStream") {
+          emoAngryId.style.height = faceTrackingData.emotions.Angry + "px";
+          emoDisgust.style.height = faceTrackingData.emotions.Disgust + "px";
+          emoFear.style.height = faceTrackingData.emotions.Fear + "px";
+          emoHappy.style.height = faceTrackingData.emotions.Happy + "px";
+          emoSad.style.height = faceTrackingData.emotions.Sad + "px";
+          emoSurprise.style.height = faceTrackingData.emotions.Surprise + "px";
+          emoNutral.style.height = faceTrackingData.emotions.Neutral + "px";
+        }
+        // else{
+        //   sendFaceData(faceTrackingData);
+        // }
+      });
+    }
+  });
+  faceX.startFaceGender((res) => {
+    if (res.result === 0) {
+      window.addEventListener(`face-gender`, (evt) => {
+        //console.log(evt.detail, "facex gender event...........");
+        const gender = evt.detail.output.mostConfident;
+        faceTrackingData.gender = gender ? gender: "";
+        if (faceTrackStream === "localStream") {
+          genderDiv.innerHTML = `<li>${faceTrackingData.gender}</li>`;
+        }else{
+          //sendFaceData(faceTrackingData);
+        }
+      });
+    }
+  });
+  faceX.startFaceFeatures((res) => {
+    if (res.result === 0) {
+      window.addEventListener(`face-features`, (evt) => {
+        const features = evt.detail.output.features;
+        const tempFeatures = {};
+        for (const feature in features) {
+          if(features[feature]>=0.4){
+            tempFeatures[feature] = features[feature].toFixed(2);
           }
         }
-        room.sendUserData(MessageOpt, true);
-        if (!isAppendFaceDetail) {
-          appendFaceDetail();
-        }
-      });
-    }
-  });
-  faceAI.startFacePose( (res) => {
-    if (res.result === 0) {
-      window.addEventListener('face-pose', (evt) => {
-        console.log(evt.detail, "face pose event...........");
-        const pitch = evt.detail.output.pose.pitch.toFixed(2);
-        const yaw = evt.detail.output.pose.yaw.toFixed(2);
-        const roll = evt.detail.output.pose.yaw.toFixed(2);
-
-        if (yaw > 0.2 || yaw < -0.2 || pitch > 0.2 || pitch < -0.2) faceTrackingData.pose = 'Please look into the camera';
-        else faceTrackingData.pose = 'Good';
-
-        if (isCheckLiveness) {
-          if (yaw < -0.1) {
-            faceTrackingData.liveness = 'You are Live';
-            isCheckLiveness = false;
-          } else {
-            faceTrackingData.liveness = 'Not Live';
+        faceTrackingData.features = tempFeatures;
+        //console.log(faceTrackingData.features, "facex features event...........");
+        if (faceTrackStream === "localStream") {
+          appendNode.innerHTML = "";
+          for (let key in faceTrackingData.features) {
+            if (faceTrackingData.features.hasOwnProperty(key)) {
+              let value = faceTrackingData.features[key];
+              //if (value >= 0.4) {
+                let node = document.createElement("LI");
+                let textnode = document.createTextNode(key);
+                node.appendChild(textnode);
+                appendNode.appendChild(node);
+             // }
+            }
           }
+        }else{
+          //sendFaceData(faceTrackingData);
         }
       });
     }
   });
-  faceAI.startFaceAge( (res) => {
+  faceX.startFaceArousalValence((res) => {
     if (res.result === 0) {
-      window.addEventListener('face-age', (evt) => {
-        console.log(evt.detail, "face age event...........");
-        const age = Math.ceil(evt.detail.output.numericAge / 5) * 5;
-        faceTrackingData.age = `${age - 5}-${age}`;
+      window.addEventListener(`face-arousal-valence`, (evt) => {
+        const arousalValence = evt.detail.output;
+        faceTrackingData.arousalValence = {arousal: arousalValence.arousal.toFixed(2), valence: arousalValence.valence.toFixed(2)};
+        if (faceTrackStream === "localStream") {
+          affectsArousal.noUiSlider.set(faceTrackingData.arousalValence.arousal);
+          affectsValence.noUiSlider.set(faceTrackingData.arousalValence.valence);
+        }else{
+          //sendFaceData(faceTrackingData);
+        }
+        //console.log(evt.detail, "facex arousal-valence event...........");
       });
     }
   });
-  faceAI.startFaceEmotion( (res) => {
+  faceX.startFaceAttention((res) => {
     if (res.result === 0) {
-      window.addEventListener('face-emotion', (evt) => {
-        console.log(evt.detail, "face emotion event...........");
-      });
-    }
-  });
-  faceAI.startFaceGender( (res) => {
-    if (res.result === 0) {
-      window.addEventListener('face-gender', (evt) => {
-        console.log(evt.detail, "face gender event...........");
-        faceTrackingData.gender = evt.detail.output.mostConfident;
-      });
-    }
-  });
-  faceAI.startFaceFeatures( (res) => {
-    if (res.result === 0) {
-      window.addEventListener('face-features', (evt) => {
-      console.log(evt.detail, "face features event...........");
-      });
-    }
-  });
-  faceAI.startFaceArousalValence( (res) => {
-    if (res.result === 0) {
-      window.addEventListener('face-arousal-valence', (evt) => {
-        console.log(evt.detail, "face arousal-valence event...........");
-      });
-    }
-  });
-  faceAI.startFaceAttention( (res) => {
-    if (res.result === 0) {
-      window.addEventListener('face-attention', (evt) => {
-        console.log(evt.detail, "face attention event...........");
-        const attention = evt.detail.output.attention.toFixed(2);
-        if (attention < 0.2) faceTrackingData.attention = 'Very Low';
-        else if (attention > 0.2 && attention < 0.4) faceTrackingData.attention = 'Low';
-        else if (attention > 0.4 && attention < 0.6) faceTrackingData.attention = 'Medium';
-        else if (attention >= 0.6) faceTrackingData.attention = 'High';
+      window.addEventListener(`face-attention`, (evt) => {
+        //console.log(evt.detail.output.attention.toFixed(2), "facex attention event...........");
+        const attention = evt.detail.output.attention.toFixed(2) * 100;
+        faceTrackingData.attention = attention;
+        if (faceTrackStream === "localStream") {
+          attentionId.style.height = attention + "px";
+        }else{
+          //sendFaceData(faceTrackingData);
+        }
       });
     }
   });
 }
 
-$('#Pic_Taker').click(function () {
-  $(this).data('clicked', true);
+function faceTrackInit(data, stream) {
+  faceX.init(data, stream, faceAIConfig, (res) => {
+    console.log(res, "init result");
+    if (res.result === 0) {
+      startFaceTrack();
+    }
+  });
+}
+
+
+
+$("#Pic_Taker").click(function () {
+  $(this).data("clicked", true);
 });
 
-function checkSimilarity() {
-  $('#compare_div').show();
-  if (isCheckSimilarity) {
-    return;
-  }
-  isCheckSimilarity = true;
-  document
-    .getElementById('compare_face_click')
-    .addEventListener('click', async () => {
-      if (selectedImage.length !== 2) {
-        alert('select any 2 image for compare');
-        return;
-      }
-      faceTrackingData.similarity = '...loading';
-      const compareData = {
-        imgURL: selectedImage[0],
-        compareImgURL: selectedImage[1],
-        modelURL: '/models',
-      };
-      faceComp.checkSimilarity(compareData, (res) => {
-        if (res.result === 0) {
-          if (res.data <= 0.5) {
-            faceTrackingData.similarity = 'Face Matched';
-          } else {
-            faceTrackingData.similarity = 'Face Not Matched';
-          }
-          alert(res.data);
-        }
-      });
-    });
-}
+$("#continue-3").click(function () {
+  $("#localStreamModal").modal("hide");
+});
 
-function changeSelectedImage(index) {
-  selectedImgIndex = index;
-}
+
+
 function stopFaceTracking() {
-  faceAI.stopFaceDetector((evt) => {
-    debugger;
-    console.log(evt, 'stop face pose evt..............');
+  faceX.stopFaceAI((evt) => {
+    console.log(evt, "stop face ai");
   });
 }
 
 function startFaceEmo() {
-  faceAI.startFaceEmotion({}, (res) => {
+  faceX.startFaceEmotion({}, (res) => {
     if (res.result === 0) {
-      window.addEventListener('face-emotion', (evt) => {
-        console.log(evt.detail, 'face emotion event...........');
+      window.addEventListener("facex-emotion", (evt) => {
+        console.log(evt.detail, "facex emotion event...........");
       });
     }
   });
 }
 
 function stopFaceEmo() {
-  faceAI.stopFaceEmotion((evt) => {
-    debugger;
-    console.log(evt, 'stop face emotion evt..............');
+  faceX.stopFaceEmotion((evt) => {
+    console.log(evt, "stop face emotion evt..............");
   });
+}
+
+function listOutCam(camLst) {
+  for (var i = 0; i < camLst.length; i++) {
+    var x = document.getElementById("cam");
+    var option = document.createElement("option");
+    option.text = camLst[i].label;
+    var camoptId = camLst[i].deviceId;
+    option.setAttribute("id", camoptId);
+    x.add(option);
+  }
+}
+
+function listOutMic(micLst) {
+  for (var j = 0; j < micLst.length; j++) {
+      var x = document.getElementById("mic");
+      var option = document.createElement("option");
+      option.text = micLst[j].label;
+      var micoptId = micLst[j].deviceId;
+      option.setAttribute("id", micoptId);
+      x.add(option);
+  }
+}
+
+$(document).on("change", "#cam", function () {
+  config.video.deviceId = $(this).find("option:selected").attr("id");
+  //localStorage.setItem("cam", $(this).find("option:selected").attr("id"));
+  setCookie("vcxCamId", $(this).find("option:selected").val());
+});
+
+$(document).on("change", "#mic", function () {
+  config.audio.deviceId = $(this).find("option:selected").attr("id");
+  localStorage.setItem("mic", $(this).find("option:selected").attr("id"));
+  setCookie("vcxMicId", $(this).find("option:selected").val());
+});
+
+$(document).on("click", "#shareURL", function () {
+  if (faceTrackStream === "remoteStream") {
+    $("#remoteStreamModal").modal("show");
+  }
+});
+var diffPer = 5;
+function optimizeRemoteData(data){
+  if(!previousSendData){
+    //setTimeout(function(){ sendFaceData(data); }, 5000);
+    previousSendData = {...data};
+    sendFaceData(data);
+    return;
+  }
+
+  let optimizeData = {};
+  if(data && data.age){
+    if(!previousSendData.age){
+      optimizeData.age = data.age;
+    }else{
+      let diffAge = getPercentageChange(previousSendData.age, data.age);
+      if (diffAge>= diffPer || diffAge<= -diffPer){
+        optimizeData.age = data.age;
+      }
+    }
+  }
+
+  if(data && data.attention){
+    if(!previousSendData.attention){
+      optimizeData.attention = data.attention;
+    }else{
+      let diffAttention = getPercentageChange(previousSendData.attention, data.attention);
+      if (diffAttention>= diffPer || diffAttention<= -diffPer){
+        optimizeData.attention = data.attention;
+      }
+    }
+  }
+  if(data && data.gender){
+    if(data.gender !== previousSendData.gender || !previousSendData.gender){
+      optimizeData.gender = data.gender;
+    }
+  }
+
+  if(data && data.arousalValence){
+    if(!previousSendData.arousalValence){
+      optimizeData.arousalValence = data.arousalValence;
+    }else{
+      for (const av in data.arousalValence) {
+        const tempArousalValence = {};
+      const diffArrousal = getPercentageChange(previousSendData.arousalValence?.arousal, data.arousalValence?.arousal); //valence
+      const diffValence = getPercentageChange(previousSendData.arousalValence?.valence, data.arousalValence?.valence);
+      if (diffArrousal>= diffPer || diffArrousal<= -diffPer){
+        tempArousalValence.arousal = data.arousalValence.arousal;
+      }
+      if (diffValence>= diffPer || diffValence<= -diffPer){
+        tempArousalValence.valence = data.arousalValence.valence;
+      }
+      if(tempArousalValence.arousal || tempArousalValence.valence){
+        optimizeData.arousalValence = tempArousalValence;
+      }
+      }
+    }
+  }
+
+  if(data && data.emotions){
+    if(!previousSendData.emotions){
+      optimizeData.emotions = data.emotions;
+    }else{
+      const tempEmo = {};
+      for (const emo in data.emotions) {
+        if(previousSendData.emotions?.[emo]){
+          const diffEmo = getPercentageChange(previousSendData.emotions[emo], data.emotions[emo]);
+          if (diffEmo>= diffPer || diffEmo<= -diffPer){
+            tempEmo[emo] = data.emotions[emo];
+          }
+        }
+      }
+      if(Object.keys(tempEmo).length !== 0){
+        optimizeData.emotions = tempEmo;
+      }
+    }
+  }
+
+  if(data && data.features){
+    if(!previousSendData.features){
+      optimizeData.features = data.features;
+    }else{
+      const tempFeatures = {};
+      for (const fea in data.features) {
+        if(previousSendData.features?.[fea]){
+         if(previousSendData.features[fea] !== data.features[fea]){
+          const diffFea = getPercentageChange(previousSendData.features[fea], data.features[fea]);
+          if (diffFea>= diffPer || diffFea<= -diffPer){
+            tempFeatures[fea] = data.features[fea];
+          }
+
+         }
+        }else{
+          tempFeatures[fea] = data.features[fea];
+        }
+      }
+      if(Object.keys(tempFeatures).length !== 0){
+        optimizeData.features = tempFeatures;
+      }
+    }
+  }
+
+  if(Object.keys(optimizeData).length !== 0){
+    sendFaceData(optimizeData);
+  }
+  previousSendData = {...data};
+}
+
+function getPercentageChange(oldNumber, newNumber){
+  const decreaseValue = oldNumber - newNumber;
+  return (decreaseValue / oldNumber) * 100;
+}
+
+function togglElementDisplay(element, display) {
+  if (element) {
+    element.style.display = `${display}`;
+  }
+}
+
+function _QS(selector, all = false) {
+  if (all) {
+    return document.querySelectorAll(selector);
+  }
+  return document.querySelector(selector);
 }

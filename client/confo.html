@@ -1,134 +1,526 @@
-<!DOCTYPE html>
+﻿<!doctype html>
 <html lang="en">
-  <head>
-    <meta charset="UTF-8" />
-    <meta
-      name="mphtools-feature"
-      content="compatibilityUI, cameraPrivacyPopup, compatibilityAutoCheck"
-    />
-    <title>FaceX Demo</title>
-    <link rel="stylesheet" href="css/bootstrap.css" />
-    <link rel="stylesheet" href="css/confo.css" />
-    <link rel="shortcut icon" type="image/png" href="/img/LogoNukio.png" />
-    <link rel="stylesheet" href="css/font-awesome.min.css" />
-    <script type="text/javascript" src="js/jquery-3.2.1.min.js"></script>
-    <script type="text/javascript" src="js/tether.min.js"></script>
-    <script type="text/javascript" src="js/bootstrap.js"></script>
-    <script type="text/javascript" src="js/EnxRtc.js"></script>
-    <script type="text/javascript" src="js/util.js"></script>
-    <script type="text/javascript" src="js/face-api.min.js"></script>
-    <script type="text/javascript" src="js/EnxFaceCompare.js"></script>
-    <script type="text/javascript" src="js/confo.js"></script>
-    <script type="text/javascript" src="js/EnxFaceAI.js"></script>
-    <link rel="stylesheet" href="css/jquery.toast.css" />
-  </head>
-  <body>
-    <div class="container-fluid">
-      <div class="row">
-        <div class="col-md-4 col-sm-4 col-xs-12">
-          <div
-            id="face_tracking_container"
-            style="background: #ffff; margin-top: 20px"
-          >
-            <select id="cam" style="width: 95%;"> </select>
-            <div id="face_attention"></div>
-            <button type="button" onclick="checkLiveness()">
-              Check liveliness
-            </button>
-            <button type="button" id="Pic_Taker" onclick="checkSimilarity()">
-              Check Similarity
-            </button>
-            <span id="reset_liveness"
-              ><button type="button" onclick="resetLiveness()">
-                Reset
-              </button></span
-            >
-            <div id="face_similarity_div">
-              <div id="compare_div">
-                <label class="radio-inline">
-                  <input
-                    type="radio"
-                    name="optradio"
-                    onclick="changeSelectedImage(0)"
-                    checked
-                  />Select Image 1
-                </label>
-                <label class="radio-inline">
-                  <input
-                    type="radio"
-                    name="optradio"
-                    onclick="changeSelectedImage(1)"
-                  />Select Image 2
-                </label>
-                <div>
-                  <span id="selected_image0"></span>
-                  <span id="selected_image1"></span>
-                </div>
-                <div id="compare_image">
-                  <button type="button" id="compare_face_click">
-                    Compare Face
-                  </button>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-        <div class="col-md-4 col-sm-4 col-xs-12">
-          <div class="video_container_div">
-            <div class="row">
-              <div id="local_video_div" style="left: 6% !important"></div>
-              <div id="multi_video_container_div"></div>
-            </div>
-          </div>
-          <div class="row" id="controls-div" style="display: none">
-            <div
-              class="controls"
-              id="controls"
-              style="
-                position: absolute;
-                bottom: 0;
-                left: 21%;
-                text-align: center;
-                z-index: 10000;
-              "
-            >
-              <img
-                src="../img/mike.png"
-                style="max-width: 50px; margin-right: 20px; cursor: pointer"
-                class="cus_img_icon icon-confo-mute"
-                onclick="audioMute()"
-                title="mute audio"
-              />
-              <img
-                src="../img/video.png"
-                style="max-width: 50px; margin-right: 20px; cursor: pointer"
-                class="cus_img_icon icon-confo-video-mute"
-                title="mute video"
-                onclick="videoMute()"
-              />
-              <img
-                src="../img/end-call.png"
-                style="max-width: 60px; margin-right: 20px; cursor: pointer"
-                class="cus_img_icon end_call"
-                title="End_call"
-                onclick="endCall()"
-              />
-            </div>
-          </div>
-        </div>
 
-        <div class="col-md-4 col-sm-4 col-xs-12">
-          <div id="faces_snapshot" style="background: #ffff; margin-top: 20px">
-            <h4>Face Images</h4>
-            <div id="face_image" style="margin-top: 10px"></div>
-          </div>
+<head>
+    <!-- Required meta tags -->
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
+    <!-- Bootstrap CSS -->
+    <link rel="shortcut icon" type="image/x-icon" href="img/favicon.ico">
+    <link rel="stylesheet" href="ajax/libs/font-awesome/4.7.0/css/font-awesome.min.css">
+    <link href="css2?family=Barlow:wght@100;400;500;600&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="css/noUISlider.min.css">
+
+    <link rel="stylesheet" href="css/bootstrap.css">
+    <link rel="stylesheet" href="css/facex.css">
+
+    <title>FaceX Demo</title>
+</head>
+
+<body>
+    <div class="hider vh-100 vw-100 position-fixed top-0" id="loading-spinner">
+        <div class="reverse-spinner">
+            <div class="loading-text">
+                Connecting to conference ....
+            </div>
+            <div class="spinner-border"></div>
         </div>
-      </div>
     </div>
-    <button type="button" onclick="stopFaceTracking()">Stop Tracking</button>
-    <button type="button" onclick="startFaceEmo()">Start Emotion</button>
-    <button type="button" onclick="stopFaceEmo()">Start Emotion</button>
-    <canvas id="canvas" width="300" height="300"></canvas>
+    <header>
+        <div class="container-fluid">
+            <div class="row mb-3">
+                <div class="col-3">
+                    <img src="img/LogoNukio.png" alt="Nukio">
+                </div>
+
+            </div>
+        </div>
+    </header>
+    <div class="container-fluid mb-5">
+        <div class="row">
+            <div class="col-lg-2 col-xl-2 align-self-center d-flex">
+                <div class="row ">
+                    <div class="col-12 mb-2">
+                        <div class="face-similarity">
+
+                            <div id="local_video_div"></div>
+                            <div class="content">
+                                <h3 id="local_user_name"></h3>
+
+
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-12">
+                            <div class="fave-img gender-height">
+                                <p>Likely Gender</p>
+                                <ul id="gender_div" class="numbered-list">
+
+                                </ul>
+                            </div>
+                            <!-- <div class="fave-img" >
+                                <p>Attention</p>
+                                <div class="progressbar" style="height:110px;">
+                                    <div id="attention" class="bar anim-1"></div>
+                                </div>
+                            </div> -->
+                        
+                    </div>
+                </div>
+
+
+
+            </div>
+            <div class="col-lg-8 col-xl-8 align-self-center d-flex">
+              
+                <div class=" img-respon">
+                  
+                  
+                    <div id="videoDiv2">
+                        <div id="videoBlock2" class="video_container_div">
+
+                            <div id="local_video_show"></div>
+
+                            <div id="multi_video_container_div"></div>
+                           
+                            <!-- <div id="videoMessageBox2">
+                            <div id="videoMessage2">
+                                <h3 class="spacer" id="remote_user_name"></h3>
+                            </div>
+                        </div> -->
+                        </div>
+                    </div>
+                   
+                </div>
+
+
+
+            </div>
+            <div class="col-lg-2 col-xl-2 align-self-center">
+                <div class="row">
+                    <div class="col-12">
+
+                        <div class="">
+
+                            <div class="fave-img">
+                                <p>Face Features</p>
+
+                                <ul id="face_features" class="numbered-list" style="height: 156px; overflow: auto;">
+
+                                </ul>
+                            </div>
+                            <!-- <div class="fave-img">
+                            <p>Likely Gender</p>
+                            <ul id="gender_div" class="numbered-list">
+                               
+                            </ul>
+                        </div> -->
+
+                        </div>
+                    </div>
+                </div>
+
+
+
+
+            </div>
+
+        </div>
+        <div class="clearfix"></div>
+        <div class="row justify-content-center ">
+            <div class="position-relative">
+                <div class="col-12">
+                    <ul class="btn-action">
+                        <li class="time">
+                            <p id="timer">00:00</p>
+                        </li>
+
+                        <li class="">
+                            <!-- <svg version="1.1" id="voice-icon"  x="0px" y="0px"
+                                        viewBox="0 0 16 16" style="enable-background:new 0 0 16 16;" xml:space="preserve">
+                                        
+                                           
+                                        <g>
+                                            <path class="voice-icon-0" d="M10,8c0,1.1-0.9,2-2,2S6,9.1,6,8V4c0-1.1,0.9-2,2-2s2,0.9,2,2V8z"/>
+                                            <path class="voice-icon-0" d="M11.6,6v2c0,2-1.6,3.6-3.6,3.6S4.4,10,4.4,8V6 M8,11.6V14 M6,14h4"/>
+                                        </g>
+                                 </svg> -->
+                            <img src="img/mike.png" style="max-width: 50px; margin-right: 20px; cursor: pointer;" class="cus_img_icon icon-confo-mute" onclick="audioMute()" title="mute audio">
+                        </li>
+                        <li class="">
+                            <!-- <svg version="1.1" id="video-icon"  x="0px" y="0px"
+                            viewBox="0 0 16 16" style="enable-background:new 0 0 16 16;" xml:space="preserve">
+                           
+                            <path class="video-icon-0" d="M15,4.7l-4.7,2.3V4.3H1v7.5h9.3V8.9l4.7,2.3V4.7z"/>
+                            </svg> -->
+                            <img src="img/video.png" style="max-width: 50px; margin-right: 20px; cursor: pointer;" class="cus_img_icon icon-confo-video-mute" title="mute video" onclick="videoMute()">
+
+                        </li>
+                        <!-- <li class="">
+                                    <svg version="1.1" id="screen-icon"  x="0px" y="0px"
+                                    viewBox="0 0 16 16" style="enable-background:new 0 0 16 16;" xml:space="preserve">
+                                        
+                                    <g>
+                                    <path class="screen-icon-0" d="M8,13.2v-1.9"/>
+                                    <path class="screen-icon-0" d="M1,2.5h14v8.9H1V2.5z"/>
+                                    <path class="screen-icon-0" d="M11.5,13.5"/>
+                                    <line class="screen-icon-0" x1="5.3" y1="13.5" x2="10.6" y2="13.5"/>
+                                </g>
+                                </svg>
+                        </li> -->
+                        <!-- <li class="">
+                                <svg version="1.1" id="recording-icon"  x="0px" y="0px"
+                                viewBox="0 0 16 16" style="enable-background:new 0 0 16 16;" xml:space="preserve">
+                                   <g>
+                                    <circle class="recording-icon-0" cx="8" cy="8" r="5.5"/>
+                                    <circle class="recording-icon-1" cx="8" cy="8" r="2.8"/>
+                                  </g>
+                                </svg>
+                        </li> -->
+                        <!-- <li class="">
+                                <svg version="1.1" id="faceAI-icon"  x="0px" y="0px"
+                                            viewBox="0 0 16 16" style="enable-background:new 0 0 16 16;" xml:space="preserve">
+                                    
+                                    <g>
+                                        <path class="faceAI-icon-0" d="M2,4.2V3.6C2,2.7,2.7,2,3.6,2h1.3"/>
+                                        <path class="faceAI-icon-0" d="M2,4.2"/>
+                                        <path class="faceAI-icon-0" d="M2,11.6"/>
+                                        <path class="faceAI-icon-0" d="M4.2,14H3.6C2.7,14,2,13.3,2,12.4v-0.8"/>
+                                        <path class="faceAI-icon-0" d="M14,11.3v1.2c0,0.9-0.7,1.5-1.6,1.6h-0.5"/>
+                                        <path class="faceAI-icon-0" d="M11.3,2h1.1C13.3,2,14,2.7,14,3.6v0.6"/>
+                                        <g>
+                                            <path class="faceAI-icon-0" d="M5.6,10.3c0,0,0.7,2.3,2.5,2.3c1.8,0.1,2.7-2.3,2.7-2.3"/>
+                                            <path class="faceAI-icon-0" d="M4.9,8.7c0,0-1.4-4.2,3.2-4.6c0,0,4.2-0.2,3.2,4.6"/>
+                                            <path class="faceAI-icon-0" d="M4.7,9.3c0,0-0.1-0.5,0.7-0.7V7.5c0,0,0.1-0.4,0.5-0.4c0,0,1.1-0.3,1.1-1.5c0,0,0.2,2,2.7,1.7
+                                                c0,0,1.5-0.2,1.1,1.3c0,0,0.8,0.2,0.6,0.8"/>
+                                            <line class="faceAI-icon-0" x1="3.4" y1="10.2" x2="12.8" y2="10.2"/>
+                                            <path class="faceAI-icon-0" d="M6.2,10c0-0.5,0.3-0.9,0.7-0.9S7.6,9.5,7.6,10"/>
+                                            <path class="faceAI-icon-0" d="M8.7,10c0-0.5,0.3-0.9,0.7-0.9s0.7,0.4,0.7,0.9"/>
+                                        </g>
+                                    </g>
+                                    </svg>
+                        </li> -->
+
+                        <!-- <li class="position-relative p-0">
+                            <div class="more show-more-menu">
+                                <button id="more-btn" class="more-btn">
+                                    <span class="more-dot"></span>
+                                    <span class="more-dot"></span>
+                                    <span class="more-dot"></span>
+                                </button>
+                                <div class="more-menu" aria-hidden="true">
+                                    <div class="more-menu-caret">
+                                        <div class="more-menu-caret-outer"></div>
+                                        <div class="more-menu-caret-inner"></div>
+                                    </div>
+                                    <ul class="more-menu-items" tabindex="-1" role="menu" aria-labelledby="more-btn" aria-hidden="true">
+                                        <li  id="shareURL" class="more-menu-item" role="presentation">
+                                            <button type="button" class="more-menu-btn" role="menuitem">Share</button>
+                                        </li>
+                                    </ul>
+                                </div>
+                            </div>
+                        </li> -->
+
+                        <li id="shareURL">
+                            <svg version="1.1" id="share-icon" x="0px" y="0px" viewbox="0 0 40 40" style="enable-background:new 0 0 40 40;" xml:space="preserve">
+
+                                <g>
+                                    <circle class="share-icon-0" cx="8.3" cy="20" r="5.3"></circle>
+                                    <circle class="share-icon-0" cx="31.7" cy="8.3" r="5.3"></circle>
+                                    <circle class="share-icon-0" cx="31.7" cy="31.7" r="5.3"></circle>
+                                    <line class="share-icon-0" x1="13.1" y1="17.6" x2="26.9" y2="10.7"></line>
+                                    <line class="share-icon-0" x1="13.1" y1="22.4" x2="26.9" y2="29.3"></line>
+                                </g>
+                            </svg>
+                        </li>
+
+                        <li class="exit" onclick="endCall()" style="cursor: pointer;">
+                            <svg version="1.1" id="exit-icon" x="0px" y="0px" viewbox="0 0 16 16" style="enable-background:new 0 0 16 16;" xml:space="preserve">
+
+                                <g>
+                                    <path class="exit-icon-0" d="M8.9,5.9V3.3H2v9.4h6.9v-2.6"></path>
+                                    <path class="exit-icon-0" d="M4.6,8H14 M11.2,10.4L14,8l-2.8-2.4"></path>
+                                </g>
+                            </svg>
+
+                        </li>
+
+
+                    </ul>
+                </div>
+
+            </div>
+           
+        </div>
+        <div class="row pos-abs" style="bottom: 50px;">
+            <div class="col-lg-2 col-xl-2 align-self-center d-flex flex-column">
+                <div class="row ">
+
+                    <div class="col-12">
+
+                        <div class="fave-img">
+                            <p>Attention</p>
+                            <div class="progressbar">
+                                <div id="attention" class="bar anim-1"></div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="col-lg-8 col-xl-8 align-self-center d-flex flex-column">
+                <div class="position-relative img-respon">
+
+                    <div class="align-self-center align-self-end">
+                       
+                        <div class="row" style="padding: 0 3px;">
+                            <div class="col-xl-8 col-lg-8 col-12">
+                                <!----------- Button section --------->
+                                <div class="fave-moction">
+                                    <div class="prog-bar">
+                                        <article>
+                                            <p>Emotions</p>
+                                        </article>
+                                        <span class="angry">Angry</span>
+                                        <div class="progressbar">
+                                            <div id="emo_angry" class="bar bar-red anim-1"></div>
+                                        </div>
+                                        <span class="disgust">Disgust</span>
+                                        <div class="progressbar">
+                                            <div id="emo_disgust" class="bar bar-blue  anim-2"></div>
+                                        </div>
+                                        <span class="fear">Fear</span>
+                                        <div class="progressbar">
+                                            <div id="emo_fear" class="bar bar-mejenta anim-3"></div>
+                                        </div>
+                                        <span class="happy">Happy</span>
+                                        <div class="progressbar">
+                                            <div id="emo_happy" class="bar bar-green anim-4"></div>
+                                        </div>
+                                        <span class="sad">Sad</span>
+                                        <div class="progressbar">
+                                            <div id="emo_sad" class="bar bar-dark-blue anim-5"></div>
+                                        </div>
+                                        <span class="surprise">Surprise</span>
+                                        <div class="progressbar">
+                                            <div id="emo_surprise" class="bar bar-dark-mejenta anim-6"></div>
+                                        </div>
+                                        <span class="neutral">Neutral</span>
+                                        <div class="progressbar">
+                                            <div id="emo_neutral" class="bar bar-black anim-7"></div>
+                                        </div>
+                                    </div>
+                                </div>
+
+                            </div>
+                            <p style="height:fit-content; position:relative">Affects</p>
+                            
+                            <span style="height: fit-content; right: 0px; top: 30px;">Arousal</span>
+                            
+                            <div id="affects_arousal" style="height: 100px !important; top: 60px;right: 25px;margin-right:50px"></div>
+                            
+                            <span style="height: fit-content;right: 0px; top: 30px;">Valence</span>
+                            <div id="affects_valence" style="height: 100px !important; top: 60px;right: 25px;"></div> 
+                            
+                            
+                            <!-- <div class="col-xl-4 col-lg-4 col-12">
+                                <div class="">
+                                    <p>Affects</p>
+                                    <div class="row">
+                                        <div class="col-xl-6 col-sm-6 col-lg-6 col-6">
+                                            <span>Arousal</span>
+                                        </div>
+                                        <div class="col-xl-6 col-sm-6 col-lg-6 col-6">
+                                            <span>Valence</span>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div> -->
+                        </div>
+                    </div>
+                </div>
+
+
+
+            </div>
+            <p style="height: fit-content; position: relative; top: 40px; left: 60px">Likely Age</p>
+            <div id="likely_age" style="height: 110px !important; top: 80px;"></div>
+            <!-- <div class="col-lg-2 col-xl-2 align-self-center d-flex flex-column">
+                <div class="row">
+                    <div class="col-12">
+
+                        <div class="fave-img">
+                            <p>Likely Age</p>
+                        </div>
+                    </div>
+                </div>
+
+
+
+
+            </div> -->
+
+        </div>
+    </div>
+
+    
+
+    <div class="modal fade" id="remoteStreamModal" tabindex="-1" role="dialog" aria-labelledby="exampleModalLabel" aria-hidden="true">
+        <div class="modal-dialog  modal-dialog-centered" role="document">
+            <div class="modal-content sign-up">
+                <!-- Modal Header -->
+                <div class="modal-header border-0 p-0">
+                    <button type="button" class="close" data-dismiss="modal">&times;</button>
+                </div>
+                <div id="remoteStream_popup" class="modal-body">
+                    <article class="modal-hedding">
+                        <h4>Welcome to EnableX FaceX Demo</h4>
+                        <!-- <p class="pb-0 mb-0">Start your 2-way video call with </p>
+                        <p> Emotion Recognition Now!</p> -->
+                    </article>
+
+                    <div class="col-12">
+                        <div class="col-12 col-md-12 mt-4" id="first_name_outer">
+                            <div id="inviteCode" class="invite-page">
+                                <input id="link" value="https://try.enablex.io/5f50bf9d5b5fc99ccb97062a" readonly="">
+                                <div id="copy">
+                                    <i class="fa fa-clipboard" aria-hidden="true" data-copytarget="#link"></i>
+                                </div>
+                            </div>
+
+                        </div>
+                        <div class="row justify-content-start mt-5">
+                            <div class="col">
+                                <p class="text-center"><span class="txt-red">Copy the above URL to share with your
+                                        friend.</span> Your friend would only need to click on the link. Once your
+                                    friend enters the call, you will be able to experience FaceX functionalities</p>
+
+                            </div>
+
+                        </div>
+
+                    </div>
+
+                </div>
+
+            </div>
+        </div>
+    </div>
+
+    <div class="modal fade" id="localStreamModal" tabindex="-1" role="dialog" aria-labelledby="exampleModalLabel" aria-hidden="true">
+        <div class="modal-dialog  modal-dialog-centered" role="document">
+            <div class="modal-content sign-up">
+
+                <!-- Modal Header -->
+                <div class="modal-header border-0 p-0">
+                    <button type="button" class="close" data-dismiss="modal">&times;</button>
+                </div>
+
+                <div id="" class="modal-body">
+                    <article class="modal-hedding">
+                        <h4>Welcome to EnableX FaceX Demo</h4>
+                        <p class="pb-0 mb-0">Please turn on your device </p>
+                        <p>camera and enter Start</p>
+                    </article>
+
+                    <div class="col-12">
+                        <div id="video_layer_container">
+                            <select class="form-control form-control-lg" id="mic" style="width: 95%;"> </select>
+                        </div>
+                        <div id="video_layer_container" style="margin-top: 10px;">
+                            <select class="form-control form-control-lg" id="cam" style="width: 95%;"> </select>
+                        </div>
+                        <div class="row justify-content-start mt-4">
+                            <div class="col">
+                                <!-- <div class="col-12 col-md-12 mt-4">
+                                    <img class="img-center" src="img/video-start.png" alt="start video" />
+                                </div> -->
+                                <article class="gray-txt">
+
+                                    <p>By allowing the use of your device camera, you consent to the use of your video
+                                        stream for the purpose of estimating your emotional state. For security
+                                        purposes, your image or video will Not be stored on your device or sent to our
+                                        server. </p>
+                                </article>
+                            </div>
+                        </div>
+                        <div class="row">
+
+                            <div class="col-12 justify-content-center align-items-center">
+                                <button id="continue-3" class="btn btn-primary mt-4" onclick="joinRoom()">Start<span id="contactus-button-spinner" class="spinner-border spinner-border-sm mt-1" style="display:none;"></span></button>
+                            </div>
+                        </div>
+                    </div>
+
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Optional JavaScript -->
+    <!-- jQuery first, then Popper.js, then Bootstrap JS -->
+    <script src="js/jquery-3.2.1.min.js"></script>
     <script type="text/javascript" src="js/jquery.toast.js"></script>
-  </body>
+    <script type="text/javascript" src="js/noUISlider.min.js"></script>
+    <script src="js/bootstrap.js"></script>
+    <script src="js/custom.js"></script>
+    <script type="text/javascript" src="js/tether.min.js"></script>
+    <script type="text/javascript" src="js/EnxRtc.js?v=1"></script>
+    <script type="text/javascript" src="js/util.js"></script>
+    <script type="text/javascript" src="js/EnxFaceCompare.js"></script>
+    <script type="text/javascript" src="js/confo.js?v=2.2.1"></script>
+    <script src="js/EnxFaceAI.js?v=1.8"></script>
+    <script>
+
+
+        // $(function () {
+            //     $('#basicExampleModal').modal('show');
+            // });
+            
+            
+            // functionality to copy text from inviteCode to clipboard
+            
+            // trigger copy event on click
+            $('#copy').on('click', function (event) {
+                console.log(event);
+                copyToClipboard(event);
+            });
+            
+            
+            
+            // event handler
+            function copyToClipboard(e) {
+                // alert('this function was triggered');
+                // find target element
+                var
+                t = e.target,
+                c = t.dataset.copytarget,
+                inp = (c ? document.querySelector(c) : null);
+                console.log(inp);
+                // check if input element exist and if it's selectable
+                if (inp && inp.select) {
+                    // select text
+                    inp.select();
+                    try {
+                        // copy text
+                        document.execCommand('copy');
+                        inp.blur();
+                        
+                        // copied animation
+                        t.classList.add('copied');
+                        setTimeout(function () {
+                            t.classList.remove('copied');
+                        }, 1500);
+                    } catch (err) {
+                        //fallback in case exexCommand doesnt work
+                        alert('please press Ctrl/Cmd+C to copy');
+                    }
+                    
+                }
+                
+            }
+            </script>
+
+</body>
+
 </html>

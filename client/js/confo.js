@@ -8,6 +8,10 @@
 // Reformat, Indentation, Inline Comments
 //
 /// //////////////////////////////////////////////////
+// Ensure EnxFaceAI and EnxFaceCompare are available in the global scope or imported before use
+// Example (uncomment and adjust the import path as needed):
+// import { EnxFaceAI, EnxFaceCompare } from './enx-face-ai.js';
+
 let faceAI = null;
 let faceComp = null;
 let isCheckSimilarity = false;
@@ -50,7 +54,7 @@ const facesURL = [];
 let localStream = null;
 let username = null;
 let room;
-const SUPPORT_URL = 'https://enablex.io';
+const SUPPORT_URL = 'https://nuve.us';
 // Player Options
 const options = {
   id: 'vcx_1001',
@@ -97,10 +101,10 @@ const options = {
     },
     branding: {
       display: false,
-      clickthru: 'https://www.enablex.io',
+      clickthru: 'https://nuve.us',
       target: 'new',
-      logo: '/img/enablex.png',
-      title: 'EnableX',
+      logo: '/img/LogoNukio.png',
+      title: 'Nukio',
       position: 'right',
     },
   },
@@ -337,7 +341,7 @@ window.onload = function () {
           if (itemDiv) {
             itemDiv.innerHTML = `${data.sender} (attention=${data.message.value.attention})`;
           }
-          // console.log(data, "faceTrackingData");
+          console.log(data, "faceTrackingData");
         });
       }
     });
@@ -469,13 +473,13 @@ function startFaceTrack() {
   faceAI.startFaceDetector( (res) => {
     if (res.result === 0) {
       window.addEventListener('face-detector', (evt) => {
-        // console.log(evt.detail, "face detector event...........");
+        console.log(evt.detail, "face detector event...........");
         const { faces } = evt.detail;
         faceTrackingData.face = faces.length;
         if (facesURL.length === 5) {
           facesURL.splice(0, evt.detail.faces.length);
         }
-        // facesURL = [];
+        facesURL = [];
         if (evt.detail.faces.length) {
           for (let i = 0; i < evt.detail.faces.length; i++) {
             const binarystring = imagedata_to_image(evt.detail.faces[i]);
@@ -486,7 +490,7 @@ function startFaceTrack() {
             });
           }
         }
-        // room.sendUserData(MessageOpt, true);
+        room.sendUserData(MessageOpt, true);
         if (!isAppendFaceDetail) {
           appendFaceDetail();
         }
@@ -496,10 +500,10 @@ function startFaceTrack() {
   faceAI.startFacePose( (res) => {
     if (res.result === 0) {
       window.addEventListener('face-pose', (evt) => {
-        // console.log(evt.detail, "face pose event...........");
+        console.log(evt.detail, "face pose event...........");
         const pitch = evt.detail.output.pose.pitch.toFixed(2);
         const yaw = evt.detail.output.pose.yaw.toFixed(2);
-        // const roll = evt.detail.output.pose.yaw.toFixed(2);
+        const roll = evt.detail.output.pose.yaw.toFixed(2);
 
         if (yaw > 0.2 || yaw < -0.2 || pitch > 0.2 || pitch < -0.2) faceTrackingData.pose = 'Please look into the camera';
         else faceTrackingData.pose = 'Good';
@@ -518,7 +522,7 @@ function startFaceTrack() {
   faceAI.startFaceAge( (res) => {
     if (res.result === 0) {
       window.addEventListener('face-age', (evt) => {
-        // console.log(evt.detail, "face age event...........");
+        console.log(evt.detail, "face age event...........");
         const age = Math.ceil(evt.detail.output.numericAge / 5) * 5;
         faceTrackingData.age = `${age - 5}-${age}`;
       });
@@ -527,14 +531,14 @@ function startFaceTrack() {
   faceAI.startFaceEmotion( (res) => {
     if (res.result === 0) {
       window.addEventListener('face-emotion', (evt) => {
-        // console.log(evt.detail, "face emotion event...........");
+        console.log(evt.detail, "face emotion event...........");
       });
     }
   });
   faceAI.startFaceGender( (res) => {
     if (res.result === 0) {
       window.addEventListener('face-gender', (evt) => {
-        // console.log(evt.detail, "face gender event...........");
+        console.log(evt.detail, "face gender event...........");
         faceTrackingData.gender = evt.detail.output.mostConfident;
       });
     }
@@ -542,21 +546,21 @@ function startFaceTrack() {
   faceAI.startFaceFeatures( (res) => {
     if (res.result === 0) {
       window.addEventListener('face-features', (evt) => {
-        // console.log(evt.detail, "face features event...........");
+      console.log(evt.detail, "face features event...........");
       });
     }
   });
   faceAI.startFaceArousalValence( (res) => {
     if (res.result === 0) {
       window.addEventListener('face-arousal-valence', (evt) => {
-        // console.log(evt.detail, "face arousal-valence event...........");
+        console.log(evt.detail, "face arousal-valence event...........");
       });
     }
   });
   faceAI.startFaceAttention( (res) => {
     if (res.result === 0) {
       window.addEventListener('face-attention', (evt) => {
-        // console.log(evt.detail, "face attention event...........");
+        console.log(evt.detail, "face attention event...........");
         const attention = evt.detail.output.attention.toFixed(2);
         if (attention < 0.2) faceTrackingData.attention = 'Very Low';
         else if (attention > 0.2 && attention < 0.4) faceTrackingData.attention = 'Low';
